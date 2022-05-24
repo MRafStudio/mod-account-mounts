@@ -1,8 +1,11 @@
 #include "Config.h"
+#include "ScriptMgr.h"
+#include "Chat.h"
+#include "Player.h"
 
 class AccountMounts : public PlayerScript
 {
-    static const bool limitrace = false; // This set to true will only learn mounts from chars on the same team, do what you want.
+    static const bool limitrace = false; // Если установлено значение true, изучение ездовых животных будет только у персонажей из одной фракции.
 public:
     AccountMounts() : PlayerScript("AccountMounts") { }
 
@@ -10,9 +13,9 @@ public:
     {
         if (sConfigMgr->GetBoolDefault("Account.Mounts.Enable", true))
         {
-            if (sConfigMgr->GetBoolDefault("Account.Mounts.Announce", true))
+            if (sConfigMgr->GetBoolDefault("Account.Mounts.Announce", false))
             {
-                WorldSession* session = player->GetSession();
+				WorldSession* session = pPlayer->GetSession();
                 std::string message = "";
                 switch (session->GetSessionDbLocaleIndex())
                 {
@@ -28,8 +31,7 @@ public:
                 ChatHandler(pPlayer->GetSession()).SendSysMessage(message + " |cff4CFF00AccountMounts |r");
             }
             std::vector<uint32> Guids;
-            uint32 playerGUID = pPlayer->GetGUID();
-            QueryResult result1 = CharacterDatabase.PQuery("SELECT guid, race FROM characters WHERE account = {}", playerGUID);
+            QueryResult result1 = CharacterDatabase.Query("SELECT guid, race FROM characters WHERE account = {}", pPlayer->GetSession()->GetAccountId());
             if (!result1)
                 return;
 
@@ -37,11 +39,11 @@ public:
             {
                 Field* fields = result1->Fetch();
     
-                uint32 guid = fields[0].GetUInt32();
-                uint32 race = fields[1].GetUInt8();
+                //uint32 guid = fields[0].GetUInt32(); //unused variable
+                uint32 race = fields[1].Get<uint8>();
 
                 if ((Player::TeamIdForRace(race) == Player::TeamIdForRace(pPlayer->getRace())) || !limitrace)
-                    Guids.push_back(result1->Fetch()[0].GetUInt32());
+                    Guids.push_back(result1->Fetch()[0].Get<uint32>());
 
             } while (result1->NextRow());
 
@@ -49,13 +51,13 @@ public:
 
             for (auto& i : Guids)
             {
-                QueryResult result2 = CharacterDatabase.PQuery("SELECT spell FROM character_spell WHERE guid = {}", i);
+                QueryResult result2 = CharacterDatabase.Query("SELECT spell FROM character_spell WHERE guid = {}", i);
                 if (!result2)
                     continue;
 
                 do
                 {
-                    Spells.push_back(result2->Fetch()[0].GetUInt32());
+                    Spells.push_back(result2->Fetch()[0].Get<uint32>());
                 } while (result2->NextRow());
             }
 
@@ -63,35 +65,13 @@ public:
             {
                 auto sSpell = sSpellStore.LookupEntry(i);
                 if (sSpell->Effect[0] == SPELL_EFFECT_APPLY_AURA && sSpell->EffectApplyAuraName[0] == SPELL_AURA_MOUNTED)
-					pPlayer->learnSpell(sSpell->Id);
+                    pPlayer->learnSpell(sSpell->Id);
             }
         }
-	}
-};
-
-class AccountMountsWorld : public WorldScript
-{
-public:
-	AccountMountsWorld() : WorldScript("AccountMountsWorld") { }
-
-	void OnBeforeConfigLoad(bool reload) override
-	{
-		if (!reload) {
-			std::string conf_path = _CONF_DIR;
-			std::string cfg_file = conf_path + "/mod_account_mount.conf";
-#ifdef WIN32
-			cfg_file = "mod_account_mount.conf";
-#endif
-			std::string cfg_def_file = cfg_file + ".dist";
-			sConfigMgr->LoadMore(cfg_def_file.c_str());
-
-			sConfigMgr->LoadMore(cfg_file.c_str());
-		}
-	}
+    }
 };
 
 void AddAccountMountsScripts()
 {
-    new AccountMountsWorld;
     new AccountMounts;
 }

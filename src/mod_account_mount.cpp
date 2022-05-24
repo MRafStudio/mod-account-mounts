@@ -18,7 +18,7 @@ public:
                 {
                 case LOCALE_ruRU:
                 {
-                    message = "На сервере запущен модуль";
+                    message = "РќР° СЃРµСЂРІРµСЂРµ Р·Р°РїСѓС‰РµРЅ РјРѕРґСѓР»СЊ";
                     break;
                 }
                 default:

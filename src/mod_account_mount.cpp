@@ -12,11 +12,24 @@ public:
         {
             if (sConfigMgr->GetBoolDefault("Account.Mounts.Announce", true))
             {
-                ChatHandler(pPlayer->GetSession()).SendSysMessage("This server is running the |cff4CFF00AccountMounts |rmodule.");
+                WorldSession* session = player->GetSession();
+                std::string message = "";
+                switch (session->GetSessionDbLocaleIndex())
+                {
+                case LOCALE_ruRU:
+                {
+                    message = "На сервере запущен модуль";
+                    break;
+                }
+                default:
+                    message = "This server is running the";
+                    break;
+                }
+                ChatHandler(pPlayer->GetSession()).SendSysMessage(message + " |cff4CFF00AccountMounts |r");
             }
             std::vector<uint32> Guids;
             uint32 playerGUID = pPlayer->GetGUID();
-            QueryResult result1 = CharacterDatabase.PQuery("SELECT guid, race FROM characters WHERE account = %u", playerGUID);
+            QueryResult result1 = CharacterDatabase.PQuery("SELECT guid, race FROM characters WHERE account = {}", playerGUID);
             if (!result1)
                 return;
 
@@ -36,7 +49,7 @@ public:
 
             for (auto& i : Guids)
             {
-                QueryResult result2 = CharacterDatabase.PQuery("SELECT spell FROM character_spell WHERE guid = %u", i);
+                QueryResult result2 = CharacterDatabase.PQuery("SELECT spell FROM character_spell WHERE guid = {}", i);
                 if (!result2)
                     continue;
 
